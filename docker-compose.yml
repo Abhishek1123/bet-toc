@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # Supabase local development
+  supabase:
+    image: supabase/supabase:latest
+    container_name: tiktok-clone-supabase
+    ports:
+      - "54321:54321"
+    environment:
+      - POSTGRES_PASSWORD=your-super-secret-and-long-postgres-password
+      - JWT_SECRET=your-super-secret-jwt-token-with-at-least-32-characters-long
+      - ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGFiYXNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTk2NzM0MzcsImV4cCI6MjAxNTI0OTQzN30.example
+      - SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1cGFiYXNlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY5OTY3MzQzNywiZXhwIjoyMDE1MjQ5NDM3fQ.example
+    volumes:
+      - ./supabase:/supabase
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:54321/rest/v1/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # PostgreSQL database (if using local PostgreSQL instead of Supabase)
+  db:
+    image: postgres:15
+    container_name: tiktok-clone-db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=tiktok_clone
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  postgres_data:
