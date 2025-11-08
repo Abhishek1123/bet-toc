@@ -1,21 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { VideoPlayer } from '@/components/VideoPlayer'
 import { VideoUpload } from '@/components/VideoUpload'
+import { LandingPage } from '@/components/LandingPage'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { Video } from '@/types/database'
-import { Home, Search, Plus, User, LogOut, Menu, Upload } from 'lucide-react'
+import { Home, Search, Plus, User, LogOut, Menu, Upload, ChevronUp, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import Link from 'next/link'
 
-export default function HomePage() {
+// Authenticated Home Component
+function AuthenticatedHome() {
   const { user, signOut } = useAuth()
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [swipeDirection, setSwipeDirection] = useState<'up' | 'down' | null>(null)
+  
+  const touchStartY = useRef<number | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // Fetch videos
   const { data: videos = [], isLoading } = useQuery({
@@ -46,6 +54,33 @@ export default function HomePage() {
     enabled: !!user && !!supabase,
   })
 
+  // Swipe handling functions
+  const handleSwipeUp = () => {
+    if (isTransitioning) return
+    if (currentVideoIndex < videos.length - 1) {
+      setIsTransitioning(true)
+      setSwipeDirection('up')
+      setTimeout(() => {
+        setCurrentVideoIndex(currentVideoIndex + 1)
+        setIsTransitioning(false)
+        setSwipeDirection(null)
+      }, 300)
+    }
+  }
+
+  const handleSwipeDown = () => {
+    if (isTransitioning) return
+    if (currentVideoIndex > 0) {
+      setIsTransitioning(true)
+      setSwipeDirection('down')
+      setTimeout(() => {
+        setCurrentVideoIndex(currentVideoIndex - 1)
+        setIsTransitioning(false)
+        setSwipeDirection(null)
+      }, 300)
+    }
+  }
+
   const handleNext = () => {
     if (currentVideoIndex < videos.length - 1) {
       setCurrentVideoIndex(currentVideoIndex + 1)
@@ -56,16 +91,44 @@ export default function HomePage() {
     await signOut()
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-white mb-8">TikTok Clone</h1>
-          <p className="text-gray-400 mb-8">Please sign in to continue</p>
-        </div>
-      </div>
-    )
+  // Touch event handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY
   }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartY.current === null) return
+    
+    const touchEndY = e.changedTouches[0].clientY
+    const diff = touchStartY.current - touchEndY
+    const threshold = 50
+
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        handleSwipeUp()
+      } else {
+        handleSwipeDown()
+      }
+    }
+    
+    touchStartY.current = null
+  }
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        handleSwipeDown()
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        handleSwipeUp()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [currentVideoIndex, isTransitioning])
 
   if (isLoading) {
     return (
@@ -116,16 +179,16 @@ export default function HomePage() {
         <nav className="flex-1 px-4">
           <ul className="space-y-2">
             <li>
-              <a href="#" className="flex items-center space-x-3 px-4 py-3 text-white bg-gray-800 rounded-lg">
+              <div className="flex items-center space-x-3 px-4 py-3 text-white bg-gray-800 rounded-lg">
                 <Home size={20} />
                 <span>Home</span>
-              </a>
+              </div>
             </li>
             <li>
-              <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg">
+              <Link href="/explore" className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg">
                 <Search size={20} />
                 <span>Explore</span>
-              </a>
+              </Link>
             </li>
             <li>
               <button 
@@ -137,10 +200,10 @@ export default function HomePage() {
               </button>
             </li>
             <li>
-              <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg">
+              <Link href="/profile" className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg">
                 <User size={20} />
                 <span>Profile</span>
-              </a>
+              </Link>
             </li>
           </ul>
         </nav>
@@ -176,16 +239,20 @@ export default function HomePage() {
             <nav className="flex-1 px-4">
               <ul className="space-y-2">
                 <li>
-                  <a href="#" className="flex items-center space-x-3 px-4 py-3 text-white bg-gray-800 rounded-lg">
+                  <div className="flex items-center space-x-3 px-4 py-3 text-white bg-gray-800 rounded-lg">
                     <Home size={20} />
                     <span>Home</span>
-                  </a>
+                  </div>
                 </li>
                 <li>
-                  <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg">
+                  <Link 
+                    href="/explore"
+                    onClick={() => setShowMobileMenu(false)}
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg"
+                  >
                     <Search size={20} />
                     <span>Explore</span>
-                  </a>
+                  </Link>
                 </li>
                 <li>
                   <button 
@@ -200,10 +267,14 @@ export default function HomePage() {
                   </button>
                 </li>
                 <li>
-                  <a href="#" className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg">
+                  <Link 
+                    href="/profile"
+                    onClick={() => setShowMobileMenu(false)}
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg"
+                  >
                     <User size={20} />
                     <span>Profile</span>
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </nav>
@@ -221,13 +292,58 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Main Video Feed */}
-      <div className="md:ml-64 pt-16 md:pt-0">
-        <VideoPlayer
-          video={currentVideo}
-          onNext={handleNext}
-          isActive={true}
-        />
+      {/* Main Video Feed with Swipe Support */}
+      <div 
+        className="md:ml-64 pt-16 md:pt-0 relative"
+        ref={containerRef}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className={`transition-transform duration-300 ease-out ${
+          swipeDirection === 'up' ? '-translate-y-full' : 
+          swipeDirection === 'down' ? 'translate-y-full' : ''
+        } ${isTransitioning ? 'opacity-80' : 'opacity-100'}`}>
+          <VideoPlayer
+            video={currentVideo}
+            onNext={handleNext}
+            isActive={true}
+          />
+        </div>
+
+        {/* Swipe Navigation Hints */}
+        {!isTransitioning && (
+          <div className="absolute inset-0 pointer-events-none z-10">
+            {/* Up Swipe Indicator */}
+            {currentVideoIndex < videos.length - 1 && (
+              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 animate-bounce">
+                <div className="bg-black/20 backdrop-blur-sm rounded-full p-2">
+                  <ChevronUp className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            )}
+            
+            {/* Down Swipe Indicator */}
+            {currentVideoIndex > 0 && (
+              <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 animate-bounce">
+                <div className="bg-black/20 backdrop-blur-sm rounded-full p-2">
+                  <ChevronDown className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Swipe Status Indicator */}
+        {isTransitioning && (
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-20">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 text-center">
+              <div className="animate-spin w-8 h-8 border-2 border-white border-t-transparent rounded-full mx-auto mb-3"></div>
+              <p className="text-white font-medium">
+                {swipeDirection === 'up' ? 'Loading next video...' : 'Loading previous video...'}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Floating Upload Button */}
@@ -244,19 +360,76 @@ export default function HomePage() {
         <VideoUpload onClose={() => setShowUpload(false)} />
       )}
 
+      {/* Swipe Navigation Controls */}
+      <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-30 space-y-3">
+        {/* Up Button */}
+        {currentVideoIndex < videos.length - 1 && (
+          <Button
+            onClick={handleSwipeUp}
+            disabled={isTransitioning}
+            size="icon"
+            className="w-12 h-12 bg-black/30 hover:bg-black/50 backdrop-blur-sm border border-white/20 text-white shadow-lg"
+          >
+            <ChevronUp className="w-5 h-5" />
+          </Button>
+        )}
+        
+        {/* Down Button */}
+        {currentVideoIndex > 0 && (
+          <Button
+            onClick={handleSwipeDown}
+            disabled={isTransitioning}
+            size="icon"
+            className="w-12 h-12 bg-black/30 hover:bg-black/50 backdrop-blur-sm border border-white/20 text-white shadow-lg"
+          >
+            <ChevronDown className="w-5 h-5" />
+          </Button>
+        )}
+      </div>
+
       {/* Video Progress Indicator */}
-      <div className="fixed bottom-4 left-4 right-20 md:left-72 flex flex-col space-y-2">
+      <div className="fixed bottom-4 left-4 right-20 md:left-72 flex flex-col space-y-2 z-30">
         <div className="flex space-x-1">
           {videos.map((_, index) => (
             <div
               key={index}
-              className={`h-1 flex-1 rounded-full transition-colors ${
-                index === currentVideoIndex ? 'bg-white' : 'bg-gray-600'
+              className={`h-1 flex-1 rounded-full transition-colors cursor-pointer hover:h-1.5 ${
+                index === currentVideoIndex ? 'bg-white' : 'bg-gray-600 hover:bg-gray-500'
               }`}
+              onClick={() => {
+                if (!isTransitioning && index !== currentVideoIndex) {
+                  setIsTransitioning(true)
+                  const direction = index > currentVideoIndex ? 'up' : 'down'
+                  setSwipeDirection(direction)
+                  setTimeout(() => {
+                    setCurrentVideoIndex(index)
+                    setIsTransitioning(false)
+                    setSwipeDirection(null)
+                  }, 300)
+                }
+              }}
             />
           ))}
+        </div>
+        <div className="text-center">
+          <span className="text-xs text-white/60 bg-black/20 px-2 py-1 rounded-full">
+            {currentVideoIndex + 1} / {videos.length}
+          </span>
         </div>
       </div>
     </div>
   )
+}
+
+// Main HomePage component
+export default function HomePage() {
+  const { user } = useAuth()
+
+  // Show landing page for unauthenticated users
+  if (!user) {
+    return <LandingPage />
+  }
+
+  // Show authenticated home for logged-in users
+  return <AuthenticatedHome />
 }
