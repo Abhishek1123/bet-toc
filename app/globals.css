@@ -53,6 +53,24 @@
     @apply w-full h-full object-cover;
   }
   
+  /* Desktop responsive styles */
+  @media (min-width: 768px) {
+    .video-container {
+      @apply h-auto w-full max-w-md aspect-[9/16] mx-auto relative;
+    }
+    
+    .video-player {
+      @apply w-full h-full object-contain;
+    }
+  }
+  
+  /* Large desktop screens */
+  @media (min-width: 1024px) {
+    .video-container {
+      @apply max-w-lg;
+    }
+  }
+  
   .side-panel {
     @apply absolute right-4 bottom-20 flex flex-col items-center space-y-6;
   }
@@ -67,6 +85,75 @@
   
   .upload-area.active {
     @apply border-blue-500 bg-blue-500 bg-opacity-10;
+  }
+
+  /* Smooth video swipe transitions */
+  .video-swipe-container {
+    @apply transition-all duration-500 ease-out;
+  }
+
+  .video-swipe-enter {
+    @apply opacity-100 translate-y-0;
+  }
+
+  .video-swipe-exit-up {
+    @apply opacity-0 -translate-y-full;
+  }
+
+  .video-swipe-exit-down {
+    @apply opacity-0 translate-y-full;
+  }
+
+  .video-swipe-enter-from-down {
+    @apply opacity-0 translate-y-full;
+  }
+
+  .video-swipe-enter-from-up {
+    @apply opacity-0 -translate-y-full;
+  }
+
+  /* Smooth page transitions */
+  .fade-in {
+    animation: fadeIn 0.3s ease-in;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .slide-up {
+    animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .slide-down {
+    animation: slideDown 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }
 

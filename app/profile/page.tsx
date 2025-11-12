@@ -5,17 +5,23 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { Video } from '@/types/database'
-import { User, Video as VideoIcon, Settings, Edit3, Grid, Heart, BookOpen } from 'lucide-react'
+import { User, Video as VideoIcon, Settings, Edit3, Grid, Heart, BookOpen, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { EditProfileDialog } from '@/components/EditProfileDialog'
+import { toast } from 'sonner'
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth()
-  const [activeTab, setActiveTab] = useState('videos')
+  const [activeTab, setActiveTab] = useState(() => {
+  const storedTab = localStorage.getItem('activeTab')
+  return storedTab ? storedTab : 'videos'
+})
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
   const router = useRouter()
 
   // Redirect if not authenticated
@@ -87,9 +93,63 @@ export default function ProfilePage() {
     enabled: !!user && !!supabase && userVideos.length > 0,
   })
 
+  // Fetch liked videos
+  const { data: likedVideos = [], isLoading: likedLoading } = useQuery({
+    queryKey: ['liked-videos', user.id],
+    queryFn: async () => {
+      if (!supabase) return []
+      const { data, error } = await supabase
+        .from('likes')
+        .select(`
+          video_id,
+          videos(
+            *,
+            user:users(*)
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      
+      return (data || [])
+        .filter((like: any) => like.videos)
+        .map((like: any) => like.videos) as any[]
+    },
+    enabled: !!user && !!supabase,
+  })
+
   const handleSignOut = async () => {
     await signOut()
     router.push('/')
+  }
+
+  const handleShareProfile = async () => {
+    if (!user) return
+    
+    const shareUrl = `${window.location.origin}/profile/${user.id}`
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Check out my TikTok profile!',
+          text: 'Join me on TikTok',
+          url: shareUrl
+        })
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') {
+          console.error('Error sharing:', error)
+        }
+      }
+    } else {
+      // Fallback: Copy to clipboard
+      try {
+        await navigator.clipboard.writeText(shareUrl)
+        toast.success('Profile link copied to clipboard!')
+      } catch (error) {
+        toast.error('Failed to copy link')
+      }
+    }
   }
 
   const getInitials = (email: string | undefined) => {
@@ -195,11 +255,16 @@ export default function ProfilePage() {
                 )}
                 
                 <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
-                  <Button className="bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-600 hover:to-violet-600 text-white">
+                  <Button 
+                    onClick={() => setEditDialogOpen(true)}
+                    className="bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-600 hover:to-violet-600 text-white">
                     <Edit3 className="w-4 h-4 mr-2" />
                     Edit Profile
                   </Button>
-                  <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-800">
+                  <Button 
+                    onClick={handleShareProfile}
+                    variant="outline" className="border-gray-600 text-white hover:bg-gray-800">
+                    <Share2 className="w-4 h-4 mr-2" />
                     Share Profile
                   </Button>
                 </div>
@@ -292,14 +357,58 @@ export default function ProfilePage() {
 
           {/* Liked Videos */}
           {activeTab === 'liked' && (
-            <div className="text-center py-16">
-              <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Heart className="w-12 h-12 text-gray-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-2">No liked videos</h3>
-              <p className="text-gray-400">Videos you like will appear here</p>
+            <div>
+              {likedLoading ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {[...Array(8)].map((_, i) => (
+                    <div key={i} className="aspect-[3/4] bg-gray-800 rounded-lg animate-pulse" />
+                  ))}
+                </div>
+              ) : likedVideos.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Heart className="w-12 h-12 text-gray-400" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">No liked videos</h3>
+                  <p className="text-gray-400">Videos you like will appear here</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {likedVideos.map((video) => (
+                    <Card key={video.id} className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-colors cursor-pointer overflow-hidden group">
+                      <CardContent className="p-0">
+                        <div className="aspect-[3/4] bg-gray-700 relative overflow-hidden">
+                          <video
+                            src={video.video_url}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            muted
+                            preload="metadata"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                          <Badge className="absolute top-2 right-2 bg-black/50 text-white">
+                            {video.duration ? `${Math.floor(video.duration)}s` : ''}
+                          </Badge>
+                          <div className="absolute bottom-2 right-2 text-white text-sm font-medium flex items-center space-x-1">
+                            <Heart className="w-3 h-3 fill-current" />
+                            <span>{video.like_count || 0}</span>
+                          </div>
+                        </div>
+                        <div className="p-3">
+                          <p className="text-white text-sm line-clamp-2">{video.title || 'Untitled video'}</p>
+                          <p className="text-gray-400 text-xs mt-1">
+                            {new Date(video.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           )}
+
+          {/* Edit Profile Dialog */}
+          <EditProfileDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} />
         </div>
       </div>
     </div>

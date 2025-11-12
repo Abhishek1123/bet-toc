@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 
 export default function ExplorePage() {
   const { user, signOut } = useAuth()
@@ -304,20 +305,36 @@ export default function ExplorePage() {
                 <TabsContent value="creators" className="mt-8">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {popularCreators.map((creator: any) => (
-                      <Card key={creator.id} className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-colors">
+                      <Card 
+                        key={creator.id} 
+                        className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-colors cursor-pointer"
+                        onClick={() => router.push(`/creator/${creator.id}`)}
+                      >
                         <CardContent className="p-6">
                           <div className="flex items-center space-x-4">
-                            <div className="w-16 h-16 bg-gradient-to-r from-pink-500 to-violet-500 rounded-full flex items-center justify-center">
+                            <div 
+                              className="w-16 h-16 bg-gradient-to-r from-pink-500 to-violet-500 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/creator/${creator.id}`)
+                              }}
+                            >
                               <span className="text-white font-bold text-lg">
                                 {creator.email?.charAt(0).toUpperCase()}
                               </span>
                             </div>
-                            <div className="flex-1">
-                              <h3 className="text-white font-bold">{creator.email?.split('@')[0]}</h3>
-                              <p className="text-gray-400 text-sm">{creator.videos?.length || 0} videos</p>
-                              <p className="text-gray-400 text-sm">{creator.followers?.length || 0} followers</p>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-white font-bold truncate">@{creator.username || creator.email?.split('@')[0]}</h3>
+                              <p className="text-gray-400 text-sm">{creator.video_count || 0} videos</p>
+                              <p className="text-gray-400 text-sm">{creator.follower_count || 0} followers</p>
                             </div>
-                            <Button className="bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-600 hover:to-violet-600 text-white">
+                            <Button 
+                              className="bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-600 hover:to-violet-600 text-white flex-shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toast.success('Followed!')
+                              }}
+                            >
                               Follow
                             </Button>
                           </div>

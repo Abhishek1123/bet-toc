@@ -62,9 +62,9 @@ function AuthenticatedHome() {
       setSwipeDirection('up')
       setTimeout(() => {
         setCurrentVideoIndex(currentVideoIndex + 1)
-        setIsTransitioning(false)
         setSwipeDirection(null)
-      }, 300)
+        setTimeout(() => setIsTransitioning(false), 50)
+      }, 500)
     }
   }
 
@@ -75,9 +75,9 @@ function AuthenticatedHome() {
       setSwipeDirection('down')
       setTimeout(() => {
         setCurrentVideoIndex(currentVideoIndex - 1)
-        setIsTransitioning(false)
         setSwipeDirection(null)
-      }, 300)
+        setTimeout(() => setIsTransitioning(false), 50)
+      }, 500)
     }
   }
 
@@ -294,15 +294,15 @@ function AuthenticatedHome() {
 
       {/* Main Video Feed with Swipe Support */}
       <div 
-        className="md:ml-64 pt-16 md:pt-0 relative"
+        className="md:ml-64 pt-16 md:pt-0 relative flex items-center justify-center h-screen"
         ref={containerRef}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <div className={`transition-transform duration-300 ease-out ${
+        <div className={`w-full h-full flex items-center justify-center transition-all duration-500 ease-out will-change-transform ${
           swipeDirection === 'up' ? '-translate-y-full' : 
-          swipeDirection === 'down' ? 'translate-y-full' : ''
-        } ${isTransitioning ? 'opacity-80' : 'opacity-100'}`}>
+          swipeDirection === 'down' ? 'translate-y-full' : 'translate-y-0'
+        }`}>
           <VideoPlayer
             video={currentVideo}
             onNext={handleNext}
@@ -403,9 +403,9 @@ function AuthenticatedHome() {
                   setSwipeDirection(direction)
                   setTimeout(() => {
                     setCurrentVideoIndex(index)
-                    setIsTransitioning(false)
                     setSwipeDirection(null)
-                  }, 300)
+                    setTimeout(() => setIsTransitioning(false), 50)
+                  }, 500)
                 }
               }}
             />
